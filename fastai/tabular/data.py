@@ -168,8 +168,9 @@ class TabularList(ItemList):
         with pd.option_context('display.max_colwidth', -1):
             display(HTML(df.to_html(index=False)))
 
-def tabular_learner(data:DataBunch, layers:Collection[int], emb_szs:Dict[str,int]=None, metrics=None,
-        ps:Collection[float]=None, emb_drop:float=0., y_range:OptRange=None, use_bn:bool=True, **learn_kwargs):
+def tabular_learner(data:DataBunch, layers:Collection[Union[int, Tuple[int, nn.Module]]],
+                    emb_szs:Dict[str,int]=None, metrics=None, ps:Collection[float]=None,
+                    emb_drop:float=0., y_range:OptRange=None, use_bn:bool=True, **learn_kwargs):
     "Get a `Learner` using `data`, with `metrics`, including a `TabularModel` created using the remaining params."
     emb_szs = data.get_emb_szs(ifnone(emb_szs, {}))
     model = TabularModel(emb_szs, len(data.cont_names), out_sz=data.c, layers=layers, ps=ps, emb_drop=emb_drop,
