@@ -8,7 +8,8 @@ __all__ = ['TabularModel']
 
 class TabularModel(Module):
     "Basic model for tabular data."
-    def __init__(self, emb_szs:ListSizes, n_cont:int, out_sz:int, layers:Collection[int], ps:Collection[float]=None,
+    def __init__(self, emb_szs:ListSizes, n_cont:int, out_sz:int,
+                 layers:Collection[Union[int, Tuple[int, nn.Module]]], ps:Collection[float]=None,
                  emb_drop:float=0., y_range:OptRange=None, use_bn:bool=True, bn_final:bool=False):
         super().__init__()
         ps = ifnone(ps, [0]*len(layers))
@@ -19,7 +20,8 @@ class TabularModel(Module):
         n_emb = sum(e.embedding_dim for e in self.embeds)
         self.n_emb,self.n_cont,self.y_range = n_emb,n_cont,y_range
         sizes = self.get_sizes(layers, out_sz)
-        actns = [nn.ReLU(inplace=True) for _ in range(len(sizes)-2)] + [None]
+        actns = ([nn.ReLU(inplace=True) if isinstance(l, int) or len(l) == 1
+                  else l[1] for l in layers] + [None] )
         layers = []
         for i,(n_in,n_out,dp,act) in enumerate(zip(sizes[:-1],sizes[1:],[0.]+ps,actns)):
             layers += bn_drop_lin(n_in, n_out, bn=use_bn and i!=0, p=dp, actn=act)
@@ -27,7 +29,9 @@ class TabularModel(Module):
         self.layers = nn.Sequential(*layers)
 
     def get_sizes(self, layers, out_sz):
-        return [self.n_emb + self.n_cont] + layers + [out_sz]
+        return ([self.n_emb + self.n_cont]
+                + [l if isinstance(l, int) else l[0] for l in layers]
+                + [out_sz])
 
     def forward(self, x_cat:Tensor, x_cont:Tensor) -> Tensor:
         if self.n_emb != 0:
